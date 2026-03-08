@@ -107,7 +107,43 @@
     font-weight: 600; font-size: 0.875rem; text-decoration: none;
     transition: all 0.2s; white-space: nowrap;
   }
-  .nav-btn-login{color:var(--muted2);text-decoration:none;font-size:0.875rem;font-weight:500;transition:color 0.2s;padding:8px 4px}.nav-btn-login:hover{color:var(--text)}.nav-cta:hover { background: #00f0c0; box-shadow: 0 6px 20px var(--accent-glow); transform: translateY(-1px); }
+  .nav-btn-login{color:var(--muted2);text-decoration:none;font-size:0.875rem;font-weight:500;transition:color 0.2s;padding:8px 4px}.nav-btn-login:hover{color:var(--text)}
+.nav-user-wrap { position: relative; display: inline-block; }
+.nav-user-btn {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--text); text-decoration: none;
+  font-size: 0.875rem; font-weight: 500;
+  padding: 7px 12px; border-radius: 8px;
+  cursor: pointer; transition: background 0.2s;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.nav-user-btn:hover { background: rgba(255,255,255,0.1); }
+.nav-dropdown {
+  position: absolute; right: 0; top: calc(100% + 8px);
+  background: #0C1118; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; padding: 6px; min-width: 160px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none;
+  transform: translateY(-6px); transition: all 0.2s;
+  z-index: 999;
+}
+.nav-user-wrap:hover .nav-dropdown,
+.nav-user-wrap.open .nav-dropdown {
+  opacity: 1; pointer-events: all; transform: none;
+}
+.nav-dropdown a {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 12px; border-radius: 8px;
+  text-decoration: none; color: var(--muted2);
+  font-size: 0.85rem; font-weight: 500; transition: all 0.15s;
+}
+.nav-dropdown a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.nav-dropdown .logout-btn { color: #ff6b6b; }
+.nav-dropdown .logout-btn:hover { background: rgba(255,107,107,0.1); color: #ff6b6b; }
+.nav-dropdown hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 4px 0; }
+
+.nav-cta:hover { background: #00f0c0; box-shadow: 0 6px 20px var(--accent-glow); transform: translateY(-1px); }
 
   /* HERO */
   #hero {
@@ -334,7 +370,9 @@
         <div class="lang-option" data-lang="zh" onclick="setLang('zh')"><span>🇨🇳</span><span class="lang-name">中文</span></div>
       </div>
     </div>
-    <a href="auth.html" class="nav-btn-login" id="navLoginBtn">Đăng nhập</a><a href="#pricing" class="nav-cta" data-i18n="nav_cta">Dùng miễn phí →</a>
+    <div class="nav-user-wrap" id="navUserWrap">
+  <a href="auth.html" class="nav-btn-login" id="navLoginBtn">Sign In</a>
+</div><a href="#pricing" class="nav-cta" data-i18n="nav_cta">Dùng miễn phí →</a>
   </div>
 </nav>
 
@@ -576,13 +614,23 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     const { createClient } = (await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'));
     const sb = createClient('https://mueszcjvxcvjnlffsflx.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11ZXN6Y2p2eGN2am5sZmZzZmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDQ4OTIsImV4cCI6MjA4ODQ4MDg5Mn0.aWDYCwOcRWMk8FlxRqiJqQQw8oypxnr6F_dmVRY1C2k');
     const { data: { session } } = await sb.auth.getSession();
+    const wrap = document.getElementById('navUserWrap');
     if (session) {
-      const loginBtn = document.getElementById('navLoginBtn');
-      if (loginBtn) {
-        const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
-        loginBtn.textContent = '👤 ' + name;
-        loginBtn.href = 'dashboard.html';
-      }
+      const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+      wrap.innerHTML = `
+        <div class="nav-user-btn">👤 ${name} ▾</div>
+        <div class="nav-dropdown">
+          <a href="dashboard.html">📊 Dashboard</a>
+          <hr>
+          <a href="#" class="logout-btn" id="navLogoutBtn">🚪 Sign Out</a>
+        </div>`;
+      document.getElementById('navLogoutBtn').addEventListener('click', async (e) => {
+        e.preventDefault();
+        await sb.auth.signOut();
+        location.reload();
+      });
+    } else {
+      wrap.innerHTML = '<a href="auth.html" class="nav-btn-login">Sign In</a>';
     }
   } catch(e) {}
 })();
