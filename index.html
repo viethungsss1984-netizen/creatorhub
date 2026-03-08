@@ -618,12 +618,19 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     if (session) {
       const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
       wrap.innerHTML = `
-        <div class="nav-user-btn">👤 ${name} ▾</div>
-        <div class="nav-dropdown">
+        <div class="nav-user-btn" id="navUserBtn">👤 ${name} ▾</div>
+        <div class="nav-dropdown" id="navDropdown">
           <a href="dashboard.html">📊 Dashboard</a>
           <hr>
           <a href="#" class="logout-btn" id="navLogoutBtn">🚪 Sign Out</a>
         </div>`;
+      document.getElementById('navUserBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrap.classList.toggle('open');
+      });
+      document.addEventListener('click', () => {
+        wrap.classList.remove('open');
+      });
       document.getElementById('navLogoutBtn').addEventListener('click', async (e) => {
         e.preventDefault();
         await sb.auth.signOut();
@@ -633,5 +640,6 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
       wrap.innerHTML = '<a href="auth.html" class="nav-btn-login">Sign In</a>';
     }
   } catch(e) {}
+})();
 })();
 </script>
