@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — CreatorHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #06090F; --surface: #0C1118; --surface2: #111820;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.11);
+    --accent: #00D4AA; --accent-glow: rgba(0,212,170,0.18);
+    --accent2: #FF6B35; --accent3: #7C9EFF; --gold: #E8C97A;
+    --text: #EEF2F7; --muted: #607182; --muted2: #8A9BAD;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 50;
+    padding: 24px 0;
+  }
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 9px;
+    padding: 0 20px 28px; text-decoration: none;
+    border-bottom: 1px solid var(--border); margin-bottom: 20px;
+  }
+  .logo-mark { width:28px;height:28px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;color:#06090F;font-weight:900;box-shadow:0 0 16px var(--accent-glow); }
+  .logo-text { font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--text); }
+
+  .nav-section { padding: 0 12px; margin-bottom: 8px; }
+  .nav-label { font-size:0.68rem;font-weight:700;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:0 8px;margin-bottom:6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 9px; text-decoration: none;
+    color: var(--muted2); font-size: 0.875rem; font-weight: 500;
+    transition: all 0.18s; cursor: pointer; border: none; background: none; width: 100%;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .nav-item.active { background: rgba(0,212,170,0.1); color: var(--accent); }
+  .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+  .sidebar-bottom { margin-top: auto; padding: 0 12px; border-top: 1px solid var(--border); padding-top: 16px; }
+
+  .user-tile {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px; border-radius: 10px; cursor: pointer;
+    transition: background 0.18s; position: relative;
+  }
+  .user-tile:hover { background: rgba(255,255,255,0.05); }
+  .user-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif; font-weight: 700; font-size: 0.85rem;
+    color: #06090F; flex-shrink: 0;
+  }
+  .user-name { font-size: 0.85rem; font-weight: 600; line-height: 1.2; }
+  .user-plan { font-size: 0.72rem; color: var(--muted2); }
+
+  /* MAIN */
+  .main { margin-left: 240px; padding: 32px 36px; min-height: 100vh; }
+
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  /* TOP BAR */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+  .topbar h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
+  .topbar p { color: var(--muted2); font-size: 0.9rem; margin-top: 3px; }
+
+  /* STATS ROW */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+  .stat-label { font-size: 0.75rem; color: var(--muted2); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+  .stat-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+  /* PLAN BANNER */
+  .plan-banner {
+    background: linear-gradient(135deg, rgba(0,212,170,0.08), rgba(124,158,255,0.06));
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 16px; padding: 22px 26px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px; flex-wrap: wrap; gap: 14px;
+  }
+  .plan-info h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  .plan-info p { color: var(--muted2); font-size: 0.875rem; }
+  .plan-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 100px; font-size: 0.72rem; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .badge-free { background: rgba(0,212,170,0.1); color: var(--accent); border: 1px solid rgba(0,212,170,0.2); }
+  .badge-pro { background: rgba(232,201,122,0.1); color: var(--gold); border: 1px solid rgba(232,201,122,0.2); }
+  .badge-team { background: rgba(124,158,255,0.1); color: var(--accent3); border: 1px solid rgba(124,158,255,0.2); }
+
+  .upgrade-btn {
+    background: var(--accent); color: #06090F;
+    padding: 10px 22px; border-radius: 9px; border: none;
+    font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.875rem;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .upgrade-btn:hover { background: #00f0c0; box-shadow: 0 8px 24px rgba(0,212,170,0.28); }
+
+  /* USAGE BAR */
+  .usage-bar-wrap { margin-top: 10px; }
+  .usage-bar-label { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted2); margin-bottom: 6px; }
+  .usage-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 100px; overflow: hidden; }
+  .usage-bar-fill { height: 100%; border-radius: 100px; background: var(--accent); transition: width 0.5s; }
+
+  /* TOOLS GRID */
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.01em; }
+  .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .tool-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px; transition: all 0.25s; cursor: pointer; position: relative;
+  }
+  .tool-card:hover:not(.locked) { border-color: rgba(0,212,170,0.2); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+  .tool-card.locked { opacity: 0.5; cursor: not-allowed; }
+  .tool-icon { font-size: 1.4rem; margin-bottom: 12px; }
+  .tool-name { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; margin-bottom: 5px; }
+  .tool-desc { color: var(--muted2); font-size: 0.82rem; line-height: 1.6; }
+  .tool-tag { display:inline-block;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:100px;margin-top:12px;letter-spacing:0.06em;text-transform:uppercase; }
+  .tag-free { background:rgba(0,212,170,0.1);color:var(--accent);border:1px solid rgba(0,212,170,0.2); }
+  .tag-pro { background:rgba(124,158,255,0.1);color:var(--accent3);border:1px solid rgba(124,158,255,0.2); }
+  .lock-icon { position:absolute;top:14px;right:14px;font-size:0.85rem;color:var(--muted); }
+
+  /* ACTIVITY */
+  .activity-list { display: flex; flex-direction: column; gap: 10px; }
+  .activity-item {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .activity-icon { font-size: 1.1rem; width: 36px; height: 36px; border-radius: 9px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .activity-info { flex: 1; }
+  .activity-title { font-size: 0.875rem; font-weight: 600; margin-bottom: 2px; }
+  .activity-time { font-size: 0.78rem; color: var(--muted2); }
+  .activity-empty { color: var(--muted2); font-size: 0.875rem; text-align: center; padding: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+
+  /* PROFILE PAGE */
+  .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+  .profile-header { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
+  .profile-avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg,var(--accent),var(--accent3)); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: #06090F; }
+  .profile-meta h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; }
+  .profile-meta p { color: var(--muted2); font-size: 0.875rem; margin-top: 3px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted2); margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .field input {
+    width: 100%; padding: 11px 14px; border-radius: 9px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border2);
+    color: var(--text); font-size: 0.9rem; font-family: 'Outfit', sans-serif; outline: none; transition: all 0.2s;
+  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .btn-save {
+    padding: 10px 24px; border-radius: 9px; background: var(--accent); color: #06090F;
+    font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.9rem;
+    border: none; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-save:hover { background: #00f0c0; }
+
+  /* PRICING */
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .price-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; position: relative; transition: all 0.25s;
+  }
+  .price-card.current { border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.04); }
+  .price-card:hover:not(.current) { border-color: var(--border2); }
+  .price-name { font-size: 0.78rem; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; }
+  .price-amount { font-family: 'Playfair Display', serif; font-size: 2.4rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; margin-bottom: 4px; }
+  .price-period { font-size: 0.85rem; color: var(--muted2); margin-bottom: 20px; }
+  .price-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .price-features li { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--muted2); }
+  .price-features li::before { content: '✓'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  .price-features li.off { opacity: 0.4; }
+  .price-features li.off::before { content: '✕'; color: var(--muted); }
+  .price-btn {
+    display: block; width: 100%; padding: 11px; border-radius: 9px; text-align: center;
+    font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 0.875rem;
+    cursor: pointer; transition: all 0.2s; border: none;
+  }
+  .price-btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--muted2); }
+  .price-btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .price-btn-solid { background: var(--accent); color: #06090F; }
+  .price-btn-solid:hover { background: #00f0c0; }
+  .current-label { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #06090F; font-size: 0.65rem; font-weight: 800; padding: 3px 12px; border-radius: 100px; white-space: nowrap; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* LOADING */
+  #loadingScreen {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; z-index: 999;
+  }
+  .loading-logo { text-align: center; animation: pulse 1.5s ease-in-out infinite; }
+  .loading-mark { width: 48px; height: 48px; border-radius: 14px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #06090F; font-weight: 900; margin: 0 auto 12px; box-shadow: 0 0 30px var(--accent-glow); }
+  .loading-text { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+
+  @media(max-width:768px){
+    .sidebar{display:none}
+    .main{margin-left:0;padding:20px}
+    .stats-row{grid-template-columns:1fr 1fr}
+    .pricing-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loadingScreen">
+  <div class="loading-logo">
+    <div class="loading-mark">C</div>
+    <div class="loading-text">CreatorHub</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <a href="index.html" class="sidebar-logo">
+    <div class="logo-mark">C</div>
+    <span class="logo-text">CreatorHub</span>
+  </a>
+  <div class="nav-section">
+    <div class="nav-label">Menu</div>
+    <button class="nav-item active" onclick="showPage('overview')"><span class="nav-icon">📊</span> Tổng quan</button>
+    <button class="nav-item" onclick="showPage('tools')"><span class="nav-icon">🛠️</span> Công cụ AI</button>
+    <button class="nav-item" onclick="showPage('activity')"><span class="nav-icon">⚡</span> Hoạt động</button>
+    <button class="nav-item" onclick="showPage('upgrade')"><span class="nav-icon">⭐</span> Nâng cấp</button>
+  </div>
+  <div class="nav-section" style="margin-top:12px">
+    <div class="nav-label">Tài khoản</div>
+    <button class="nav-item" onclick="showPage('profile')"><span class="nav-icon">👤</span> Hồ sơ</button>
+    <button class="nav-item" onclick="handleLogout()"><span class="nav-icon">🚪</span> Đăng xuất</button>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="user-tile" onclick="showPage('profile')">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div>
+        <div class="user-name" id="sidebarName">Đang tải...</div>
+        <div class="user-plan" id="sidebarPlan">Free</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- OVERVIEW PAGE -->
+  <div id="page-overview" class="page active">
+    <div class="topbar">
+      <div>
+        <h1 id="welcomeMsg">Xin chào! 👋</h1>
+        <p>Đây là tổng quan tài khoản của bạn hôm nay</p>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Lượt dùng hôm nay</div>
+        <div class="stat-value" id="usageToday">0</div>
+        <div class="stat-sub" id="usageLimit">/ 5 lượt (Free)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gói hiện tại</div>
+        <div class="stat-value" id="currentPlan" style="font-size:1.4rem;margin-top:4px">Free</div>
+        <div class="stat-sub">Miễn phí</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tools đã dùng</div>
+        <div class="stat-value">0</div>
+        <div class="stat-sub">Tổng lượt</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Thành viên từ</div>
+        <div class="stat-value" id="memberSince" style="font-size:1rem;margin-top:8px">—</div>
+        <div class="stat-sub">Ngày tham gia</div>
+      </div>
+    </div>
+
+    <div class="plan-banner">
+      <div class="plan-info">
+        <div class="plan-badge badge-free" id="planBadge">✦ FREE</div>
+        <h3 id="planTitle">Gói miễn phí</h3>
+        <p id="planDesc">5 lượt dùng / ngày · 3 công cụ cơ bản</p>
+        <div class="usage-bar-wrap">
+          <div class="usage-bar-label">
+            <span>Đã dùng hôm nay</span>
+            <span id="usageText">0 / 5 lượt</span>
+          </div>
+          <div class="usage-bar"><div class="usage-bar-fill" id="usageFill" style="width:0%"></div></div>
+        </div>
+      </div>
+      <button class="upgrade-btn" onclick="showPage('upgrade')">⭐ Nâng cấp Pro</button>
+    </div>
+
+    <div class="section-title">Công cụ gần đây</div>
+    <div class="tools-grid">
+      <div class="tool-card" onclick="showPage('tools')">
+        <div class="tool-icon">✍️</div>
+        <div class="tool-name">AI Caption Generator</div>
+        <div class="tool-desc">Tạo caption hấp dẫn cho mọi nền tảng</div>
+        <span class="tool-tag tag-free">Miễn phí</span>
+      </div>
+      <div class="tool-card" onclick="showPage('tools')">
+        <div class="tool-icon">#️⃣</div>
+        <div class="tool-name">Hashtag Research</div>
+        <div class="tool-desc">Tìm hashtag trending theo niche</div>
+        <span class="tool-tag tag-free">Miễn phí</span>
+      </div>
+      <div class="tool-card locked">
+        <div class="lock-icon">🔒</div>
+        <div class="tool-icon">📝</div>
+        <div class="tool-name">Script Writer AI</div>
+        <div class="tool-desc">Viết kịch bản video tự động</div>
+        <span class="tool-tag tag-pro">Pro</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOLS PAGE -->
+  <div id="page-tools" class="page">
+    <div class="topbar"><div><h1>Công cụ AI</h1><p>Chọn công cụ để bắt đầu sáng tạo</p></div></div>
+    <div class="tools-grid">
+      <div class="tool-card"><div class="tool-icon">✍️</div><div class="tool-name">AI Caption Generator</div><div class="tool-desc">Tạo caption hấp dẫn cho TikTok, Instagram, Facebook theo phong cách của bạn.</div><span class="tool-tag tag-free">Miễn phí</span></div>
+      <div class="tool-card"><div class="tool-icon">#️⃣</div><div class="tool-name">Hashtag Research</div><div class="tool-desc">Phân tích hashtag trending theo niche, tìm hashtag có reach cao nhất.</div><span class="tool-tag tag-free">Miễn phí</span></div>
+      <div class="tool-card locked"><div class="lock-icon">🔒</div><div class="tool-icon">🎬</div><div class="tool-name">YouTube Title Optimizer</div><div class="tool-desc">Tạo tiêu đề video chuẩn SEO, tối ưu CTR.</div><span class="tool-tag tag-pro">Pro</span></div>
+      <div class="tool-card locked"><div class="lock-icon">🔒</div><div class="tool-icon">📅</div><div class="tool-name">Content Calendar</div><div class="tool-desc">Lên lịch đăng bài thông minh theo xu hướng.</div><span class="tool-tag tag-pro">Pro</span></div>
+      <div class="tool-card locked"><div class="lock-icon">🔒</div><div class="tool-icon">📝</div><div class="tool-name">Script Writer AI</div><div class="tool-desc">Viết kịch bản video ngắn/dài tự động.</div><span class="tool-tag tag-pro">Pro</span></div>
+      <div class="tool-card locked"><div class="lock-icon">🔒</div><div class="tool-icon">🔍</div><div class="tool-name">Blog SEO Optimizer</div><div class="tool-desc">Phân tích và tối ưu bài viết lên top Google.</div><span class="tool-tag tag-pro">Pro</span></div>
+    </div>
+    <div style="text-align:center;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;">
+      <p style="color:var(--muted2);margin-bottom:14px">🔒 Mở khóa tất cả 12+ công cụ với gói Pro</p>
+      <button class="upgrade-btn" onclick="showPage('upgrade')">⭐ Nâng cấp Pro — 199k/tháng</button>
+    </div>
+  </div>
+
+  <!-- ACTIVITY PAGE -->
+  <div id="page-activity" class="page">
+    <div class="topbar"><div><h1>Hoạt động</h1><p>Lịch sử sử dụng công cụ của bạn</p></div></div>
+    <div class="activity-list" id="activityList">
+      <div class="activity-empty">Chưa có hoạt động nào. Bắt đầu dùng công cụ AI nhé! 🚀</div>
+    </div>
+  </div>
+
+  <!-- UPGRADE PAGE -->
+  <div id="page-upgrade" class="page">
+    <div class="topbar"><div><h1>Nâng cấp gói</h1><p>Chọn gói phù hợp với nhu cầu của bạn</p></div></div>
+    <div class="pricing-grid">
+      <div class="price-card current" id="freePlanCard">
+        <div class="current-label" id="currentPlanLabel">Gói hiện tại</div>
+        <div class="price-name">Free</div>
+        <div class="price-amount">0đ</div>
+        <div class="price-period">mãi mãi miễn phí</div>
+        <ul class="price-features">
+          <li>5 lượt dùng / ngày</li>
+          <li>3 công cụ cơ bản</li>
+          <li>Caption Generator</li>
+          <li>Hashtag Tool</li>
+          <li class="off">Script Writer AI</li>
+          <li class="off">Ưu tiên xử lý</li>
+        </ul>
+        <button class="price-btn price-btn-outline" disabled>Đang dùng</button>
+      </div>
+      <div class="price-card">
+        <div class="price-name">Pro</div>
+        <div class="price-amount">199k</div>
+        <div class="price-period">/tháng · 7 ngày miễn phí</div>
+        <ul class="price-features">
+          <li>Không giới hạn lượt dùng</li>
+          <li>Tất cả 12+ công cụ</li>
+          <li>Script Writer AI</li>
+          <li>Content Calendar</li>
+          <li>SEO Optimizer</li>
+          <li>Hỗ trợ ưu tiên</li>
+        </ul>
+        <button class="price-btn price-btn-solid" onclick="alert('Tính năng thanh toán sẽ được tích hợp sớm! 🚀')">Nâng cấp Pro</button>
+      </div>
+      <div class="price-card">
+        <div class="price-name">Team</div>
+        <div class="price-amount">499k</div>
+        <div class="price-period">/tháng · cho 5 thành viên</div>
+        <ul class="price-features">
+          <li>5 thành viên</li>
+          <li>Tất cả tính năng Pro</li>
+          <li>Workspace chung</li>
+          <li>API access</li>
+          <li>Analytics nâng cao</li>
+          <li>Account manager riêng</li>
+        </ul>
+        <button class="price-btn price-btn-outline" onclick="alert('Liên hệ: creatorhub@email.com')">Liên hệ tư vấn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE PAGE -->
+  <div id="page-profile" class="page">
+    <div class="topbar"><div><h1>Hồ sơ</h1><p>Quản lý thông tin tài khoản</p></div></div>
+    <div class="profile-card">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div class="profile-meta">
+          <h3 id="profileName">Đang tải...</h3>
+          <p id="profileEmail">...</p>
+        </div>
+      </div>
+      <div class="field"><label>Họ và tên</label><input type="text" id="profileNameInput" placeholder="Nguyễn Văn A"></div>
+      <div class="field"><label>Email</label><input type="email" id="profileEmailInput" disabled style="opacity:0.6;cursor:not-allowed"></div>
+      <button class="btn-save" onclick="saveProfile()">Lưu thay đổi</button>
+    </div>
+    <div class="profile-card">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:16px">Bảo mật</h3>
+      <div class="field"><label>Mật khẩu mới</label><input type="password" id="newPassword" placeholder="Ít nhất 8 ký tự"></div>
+      <button class="btn-save" onclick="changePassword()">Đổi mật khẩu</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const SUPABASE_URL = 'https://mueszcjvxcvjnlffsflx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11ZXN6Y2p2eGN2am5sZmZzZmx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDQ4OTIsImV4cCI6MjA4ODQ4MDg5Mn0.aWDYCwOcRWMk8FlxRqiJqQQw8oypxnr6F_dmVRY1C2k';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const map = {overview:0, tools:1, activity:2, upgrade:3, profile:4};
+  const items = document.querySelectorAll('.nav-item');
+  if (map[id] !== undefined) items[map[id]].classList.add('active');
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+async function loadUser() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'auth.html'; return; }
+  currentUser = session.user;
+  const name = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+  const initials = getInitials(name);
+  const plan = currentUser.user_metadata?.plan || 'Free';
+
+  // Sidebar
+  document.getElementById('sidebarAvatar').textContent = initials;
+  document.getElementById('sidebarName').textContent = name;
+  document.getElementById('sidebarPlan').textContent = plan + ' Plan';
+
+  // Overview
+  document.getElementById('welcomeMsg').textContent = `Xin chào, ${name}! 👋`;
+  document.getElementById('currentPlan').textContent = plan;
+  document.getElementById('memberSince').textContent = formatDate(currentUser.created_at);
+
+  // Profile
+  document.getElementById('profileAvatar').textContent = initials;
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileEmail').textContent = currentUser.email;
+  document.getElementById('profileNameInput').value = name;
+  document.getElementById('profileEmailInput').value = currentUser.email;
+
+  // Usage (dùng localStorage cho demo)
+  const today = new Date().toDateString();
+  const usageKey = `usage_${currentUser.id}_${today}`;
+  const usage = parseInt(localStorage.getItem(usageKey) || '0');
+  const limit = plan === 'Free' ? 5 : 999;
+  document.getElementById('usageToday').textContent = usage;
+  document.getElementById('usageLimit').textContent = `/ ${plan === 'Free' ? '5 lượt (Free)' : 'Không giới hạn (Pro)'}`;
+  document.getElementById('usageText').textContent = `${usage} / ${plan === 'Free' ? '5' : '∞'} lượt`;
+  document.getElementById('usageFill').style.width = plan === 'Free' ? `${Math.min(usage/5*100, 100)}%` : '20%';
+
+  // Hide loading
+  document.getElementById('loadingScreen').style.display = 'none';
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+async function saveProfile() {
+  const name = document.getElementById('profileNameInput').value.trim();
+  if (!name) return alert('Vui lòng nhập tên!');
+  const { error } = await sb.auth.updateUser({ data: { full_name: name } });
+  if (error) alert('Lỗi: ' + error.message);
+  else { alert('Đã lưu thành công! ✅'); location.reload(); }
+}
+
+async function changePassword() {
+  const pw = document.getElementById('newPassword').value;
+  if (pw.length < 8) return alert('Mật khẩu phải có ít nhất 8 ký tự!');
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if (error) alert('Lỗi: ' + error.message);
+  else { alert('Đổi mật khẩu thành công! ✅'); document.getElementById('newPassword').value = ''; }
+}
+
+loadUser();
+</script>
+</body>
+</html>
