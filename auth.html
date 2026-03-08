@@ -244,15 +244,33 @@ async function handleRegister() {
   if (!name || !email || !password) return showAlert('Vui lòng điền đầy đủ thông tin');
   if (password.length < 8) return showAlert('Mật khẩu phải có ít nhất 8 ký tự');
   setLoading('registerBtn', true);
-  const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+
+  // Tắt email xác nhận của Supabase, tự gửi qua Gmail
+  const { data, error } = await sb.auth.signUp({ 
+    email, password, 
+    options: { 
+      data: { full_name: name },
+      emailRedirectTo: 'https://creatorhub-topaz-theta.vercel.app/dashboard.html'
+    } 
+  });
   setLoading('registerBtn', false);
   if (error) return showAlert(error.message);
-  if (data.user && !data.session) {
-    showAlert('Đăng ký thành công! Kiểm tra email để xác nhận tài khoản.', 'success');
-  } else {
-    showAlert('Đăng ký thành công!', 'success');
-    setTimeout(() => window.location.href = 'dashboard.html', 1000);
-  }
+
+  // Lấy confirm URL từ Supabase và gửi email đẹp qua Gmail
+  try {
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: email,
+        name: name,
+        type: 'confirm',
+        confirmUrl: 'https://creatorhub-topaz-theta.vercel.app/auth.html?confirmed=true'
+      })
+    });
+  } catch(e) { console.log('Email API error:', e); }
+
+  showAlert('Đăng ký thành công! 🎉 Kiểm tra email từ CreatorHub để xác nhận tài khoản.', 'success');
 }
 
 async function handleGoogleLogin() {
